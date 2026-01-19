@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nabíjení do 80 %</title>
+
+  <meta name="theme-color" content="#111111">
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: #f6f6f6;
+      padding: 24px;
+    }
+    .card {
+      max-width: 420px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 14px;
+      box-shadow: 0 10px 25px rgba(0,0,0,.08);
+    }
+    h1 { margin-top: 0; }
+    input {
+      width: 100%;
+      padding: 14px;
+      font-size: 18px;
+      margin-top: 10px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+    }
+    .result {
+      margin-top: 20px;
+      font-size: 18px;
+      font-weight: bold;
+      line-height: 1.4;
+    }
+    .small {
+      font-size: 14px;
+      color: #555;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+
+<body>
+<div class="card">
+  <h1>🔌 Nabíjení do 80 %</h1>
+
+  <label>Aktuální stav baterie (%)</label>
+  <input id="percent" type="number" min="0" max="79" placeholder="např. 35">
+
+  <div class="result" id="result"></div>
+  <div class="small">Zaokrouhleno nahoru na 30 min (Tesla Wallbox)</div>
+</div>
+
+<script>
+const BATTERY_KWH = 54;
+const POWER_KW = 11;
+const TARGET = 80;
+
+document.getElementById('percent').addEventListener('input', calculate);
+
+function roundUpToNextSlot(date) {
+  const d = new Date(date);
+  const m = d.getMinutes();
+
+  if (m < 30) {
+    d.setMinutes(30, 0, 0);
+  } else {
+    d.setHours(d.getHours() + 1, 0, 0, 0);
+  }
+  return d;
+}
+
+function roundUpTo30Minutes(minutes) {
+  return Math.ceil(minutes / 30) * 30;
+}
+
+function formatTime(d) {
+  return d.toLocaleTimeString('cs-CZ', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function calculate() {
+  const result = document.getElementById('result');
+  const currentPercent = Number(document.getElementById('percent').value);
+
+  if (isNaN(currentPercent) || currentPercent < 0 || currentPercent >= TARGET) {
+    result.textContent = '';
+    return;
+  }
+
+  const neededKwh = BATTERY_KWH * ((TARGET - currentPercent) / 100);
+  const rawMinutes = (neededKwh / POWER_KW) * 60;
+  const roundedMinutes = roundUpTo30Minutes(rawMinutes);
+
+  const now = new Date();
+  const start = roundUpToNextSlot(now);
+  const end = new Date(start.getTime() + roundedMinutes * 60000);
+
+  const hours = Math.floor(roundedMinutes / 60);
+  const mins = roundedMinutes % 60;
+
+  result.innerHTML = `
+    ⏱️ Doba nabíjení: ${hours} h ${mins} min<br>
+    ▶️ Od ${formatTime(start)} do ${formatTime(end)}
+  `;
+}
+</script>
+</body>
+</html>
